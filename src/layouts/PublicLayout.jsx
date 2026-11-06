@@ -63,6 +63,17 @@ export const PublicLayout = () => {
             </div>
 
             <div className="flex items-center gap-2 sm:gap-space-lg shrink-0">
+              {/* Official App Download Link */}
+              <a
+                href="/NagarConnect.apk"
+                download="NagarConnect.apk"
+                className="inline-flex items-center gap-1 bg-white/20 hover:bg-white/30 text-white px-2 py-0.5 rounded font-bold text-[11px] transition-colors"
+                title="Download Official Android APK (3.7 MB)"
+              >
+                <span className="material-symbols-outlined text-xs">android</span>
+                <span>Download App</span>
+              </a>
+
               <div className="flex items-center gap-1">
                 <span className="text-surface-variant hidden md:inline">Helpline:</span>
                 <a className="text-primary-fixed font-bold hover:underline" href="tel:1800223844">
@@ -361,6 +372,17 @@ export const PublicLayout = () => {
                   <span>Sign In / Select Portal Role</span>
                 </Link>
               )}
+
+              {/* Official App Download (APK) */}
+              <a
+                href="/NagarConnect.apk"
+                download="NagarConnect.apk"
+                onClick={() => setMobileMenuOpen(false)}
+                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-700 to-indigo-800 text-white py-2.5 rounded-xl text-xs font-bold shadow-sm border border-white/20"
+              >
+                <span className="material-symbols-outlined text-base">android</span>
+                <span>Download Android App (APK 3.7MB)</span>
+              </a>
 
               {/* Emergency Hotline Button */}
               <a

@@ -31,6 +31,7 @@ dist-ssr
 
 # Android & Binaries
 *.apk
+!public/*.apk
 local.properties
 android/local.properties
 
