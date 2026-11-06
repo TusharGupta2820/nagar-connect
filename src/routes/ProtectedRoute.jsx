@@ -19,15 +19,27 @@ export const ProtectedRoute = ({ children, allowedRoles = [] }) => {
     );
   }
 
+  // Check state or direct persistent localStorage session before deciding to redirect
+  const effectiveUser = user || (() => {
+    try {
+      const stored = localStorage.getItem('nagar_connect_mock_user');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  })();
+
+  const effectiveRole = role || effectiveUser?.role || 'citizen';
+
   // If user is not logged in, redirect to login
-  if (!user) {
+  if (!effectiveUser) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   // If role is specified and does not match, redirect to unauthorized/appropriate dashboard
-  if (allowedRoles.length > 0 && !allowedRoles.includes(role)) {
-    if (role === 'admin') return <Navigate to="/admin" replace />;
-    if (role === 'field_worker' || role === 'officer') return <Navigate to="/field" replace />;
+  if (allowedRoles.length > 0 && !allowedRoles.includes(effectiveRole)) {
+    if (effectiveRole === 'admin') return <Navigate to="/admin" replace />;
+    if (effectiveRole === 'field_worker' || effectiveRole === 'officer') return <Navigate to="/field" replace />;
     return <Navigate to="/" replace />;
   }
 

@@ -114,33 +114,37 @@ export const authService = {
   },
 
   async getProfile(userId) {
-    if (!isSupabaseConfigured()) {
-      const stored = localStorage.getItem('nagar_connect_mock_user');
-      if (stored) {
-        try {
-          return JSON.parse(stored);
-        } catch {
-          return DEMO_USERS.citizen;
+    if (isSupabaseConfigured() && userId && !userId.startsWith('00000000-0000-4000-a000-')) {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*, wards(*), departments(*)')
+          .eq('id', userId)
+          .single();
+
+        if (!error && data) {
+          return data;
         }
+      } catch (err) {
+        console.warn('Could not fetch user profile from Supabase:', err);
       }
-      return null;
     }
 
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*, wards(*), departments(*)')
-      .eq('id', userId)
-      .single();
-
-    if (error) {
-      console.warn('Could not fetch user profile:', error.message);
-      return null;
+    // Check localStorage cache or match DEMO_USERS
+    const stored = localStorage.getItem('nagar_connect_mock_user');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (parsed.id === userId || !userId) return parsed;
+      } catch {}
     }
-    return data;
+
+    const matched = Object.values(DEMO_USERS).find((u) => u.id === userId);
+    return matched || DEMO_USERS.admin;
   },
 
   async updateProfile(userId, updates) {
-    if (!isSupabaseConfigured()) {
+    if (!isSupabaseConfigured() || userId?.startsWith('00000000-0000-4000-a000-')) {
       const stored = localStorage.getItem('nagar_connect_mock_user');
       const current = stored ? JSON.parse(stored) : DEMO_USERS.citizen;
       const updated = { ...current, ...updates };
@@ -189,24 +193,31 @@ export const authService = {
   },
 
   async getCurrentSession() {
-    if (!isSupabaseConfigured()) {
-      const stored = localStorage.getItem('nagar_connect_mock_user');
-      if (stored) {
-        try {
-          const user = JSON.parse(stored);
-          return { user, profile: user };
-        } catch {
-          return { user: null, profile: null };
+    // 1. First check Supabase Auth session if configured
+    if (isSupabaseConfigured()) {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (!error && session?.user) {
+          const profile = await this.getProfile(session.user.id);
+          return { user: session.user, profile };
         }
+      } catch (err) {
+        console.warn('Supabase session check fallback to stored session:', err);
       }
-      return { user: null, profile: null };
     }
 
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) return { user: null, profile: null };
+    // 2. Check persistent user session in localStorage
+    const stored = localStorage.getItem('nagar_connect_mock_user');
+    if (stored) {
+      try {
+        const user = JSON.parse(stored);
+        return { user, profile: user };
+      } catch {
+        return { user: null, profile: null };
+      }
+    }
 
-    const profile = await this.getProfile(session.user.id);
-    return { user: session.user, profile };
+    return { user: null, profile: null };
   },
 };
 
