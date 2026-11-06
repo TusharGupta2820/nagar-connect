@@ -240,21 +240,10 @@ export const AdminLayout = () => {
               )}
             </div>
 
-            {/* Quick Role Switcher */}
-            <div className="flex items-center gap-1 bg-surface-container-low px-1.5 sm:px-2 py-1 rounded border border-outline-variant/30">
-              <span className="text-[10px] font-bold uppercase text-on-surface-variant hidden sm:inline">Role:</span>
-              <select
-                aria-label="Admin View Role Switcher"
-                value={role}
-                onChange={(e) => switchRole(e.target.value)}
-                className="bg-transparent text-[11px] sm:text-xs font-semibold text-primary focus:outline-none cursor-pointer"
-              >
-                <option value="admin">Admin</option>
-                <option value="officer">Officer</option>
-                <option value="field_worker">Field</option>
-                <option value="citizen">Citizen</option>
-              </select>
-            </div>
+            {/* Official Role Indicator */}
+            <span className="hidden sm:inline-block px-2.5 py-1 bg-primary text-on-primary rounded-lg text-[11px] font-bold uppercase tracking-wider shadow-2xs">
+              {role.replace('_', ' ')}
+            </span>
 
             {/* Officer Profile Capsule */}
             <div className="flex items-center gap-1 sm:gap-space-sm pl-1 sm:pl-space-sm border-l border-surface-container">

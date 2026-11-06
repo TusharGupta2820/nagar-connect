@@ -47,18 +47,11 @@ export const FieldWorkerLayout = () => {
           </div>
         </div>
 
-        {/* Action / Role switcher */}
+        {/* Action / Role indicator */}
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-          <select
-            aria-label="Field Worker Role Switcher"
-            value={role}
-            onChange={(e) => switchRole(e.target.value)}
-            className="text-[11px] sm:text-xs bg-surface-container-low text-primary border border-outline-variant/40 rounded px-1.5 sm:px-2 py-1 font-semibold focus:outline-none cursor-pointer"
-          >
-            <option value="field_worker">Field QRT</option>
-            <option value="admin">Admin</option>
-            <option value="citizen">Citizen</option>
-          </select>
+          <span className="text-[11px] sm:text-xs bg-emerald-100 text-emerald-900 border border-emerald-300 rounded px-2 py-1 font-bold">
+            Field QRT
+          </span>
 
           <Link
             to="/admin"

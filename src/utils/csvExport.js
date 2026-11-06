@@ -117,3 +117,4 @@ export const exportComplaintsToCSV = (complaints = [], customFilename = null) =>
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
 };
+

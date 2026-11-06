@@ -173,46 +173,37 @@ export const PublicLayout = () => {
               <span>File Grievance</span>
             </Link>
 
-            {/* Role Switcher Dropdown */}
-            <div className="hidden sm:flex items-center gap-space-xs bg-surface-container-low p-1 rounded-lg border border-outline-variant/30">
-              <div className="hidden lg:flex flex-col text-right px-1">
-                <span className="font-label-sm text-[10px] text-on-surface font-bold uppercase">
-                  Role: {role.replace('_', ' ')}
-                </span>
-                <span className="font-code-sm text-[10px] text-on-surface-variant">
-                  {user ? user.email : 'Guest'}
-                </span>
-              </div>
-
-              <select
-                aria-label="Switch User Role"
-                value={role}
-                onChange={(e) => switchRole(e.target.value)}
-                className="bg-surface-container-lowest text-primary text-xs font-semibold px-2 py-1 rounded border border-outline-variant/50 focus:outline-none focus:ring-1 focus:ring-secondary cursor-pointer"
-              >
-                <option value="citizen">Citizen</option>
-                <option value="admin">Admin (Engineer)</option>
-                <option value="officer">Ward Officer</option>
-                <option value="field_worker">Field Worker (QRT)</option>
-              </select>
-
-              {user ? (
+            {/* User Session Profile / Sign In */}
+            {user ? (
+              <div className="hidden sm:flex items-center gap-2 bg-surface-container-low px-2.5 py-1.5 rounded-xl border border-outline-variant/30">
+                <div className="w-7 h-7 rounded-full bg-primary text-on-primary flex items-center justify-center font-bold text-xs uppercase shadow-xs shrink-0">
+                  {user.full_name?.charAt(0) || user.email?.charAt(0) || 'U'}
+                </div>
+                <div className="hidden lg:flex flex-col text-left">
+                  <span className="font-bold text-xs text-primary leading-tight truncate max-w-[120px]">
+                    {user.full_name || user.email?.split('@')[0]}
+                  </span>
+                  <span className="text-[10px] text-secondary font-semibold uppercase tracking-wider">
+                    {role.replace('_', ' ')}
+                  </span>
+                </div>
                 <button
                   onClick={signOut}
                   title="Logout session"
-                  className="p-1 hover:bg-surface-container-high rounded text-on-surface-variant hover:text-error"
+                  className="p-1 hover:bg-surface-container-high rounded text-on-surface-variant hover:text-error transition-colors"
                 >
-                  <span className="material-symbols-outlined text-title-md">logout</span>
+                  <span className="material-symbols-outlined text-base">logout</span>
                 </button>
-              ) : (
-                <Link
-                  to="/login"
-                  className="px-2 py-1 bg-primary text-on-primary rounded text-xs font-semibold hover:bg-secondary"
-                >
-                  Login
-                </Link>
-              )}
-            </div>
+              </div>
+            ) : (
+              <Link
+                to="/login"
+                className="hidden sm:inline-flex items-center gap-1.5 bg-surface-container-low hover:bg-surface-container text-primary font-bold px-3.5 py-2 rounded-xl text-xs border border-outline-variant/40 transition-colors shadow-2xs min-h-[38px]"
+              >
+                <span className="material-symbols-outlined text-base">login</span>
+                <span>Sign In</span>
+              </Link>
+            )}
 
             {/* Mobile Hamburger Button */}
             <button
@@ -337,29 +328,39 @@ export const PublicLayout = () => {
                 </Link>
               </nav>
 
-              {/* Mobile Role Switcher */}
-              <div className="bg-surface-container-low p-3 rounded-xl space-y-2 border border-surface-container">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-on-surface uppercase">Switch Role</span>
-                  <span className="text-[10px] text-secondary font-mono uppercase font-bold">
-                    {role.replace('_', ' ')}
-                  </span>
+              {/* Mobile User Profile / Sign In Link */}
+              {user ? (
+                <div className="bg-surface-container-low p-3 rounded-xl flex items-center justify-between border border-surface-container">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center font-bold text-xs uppercase shrink-0">
+                      {user.full_name?.charAt(0) || user.email?.charAt(0) || 'U'}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-bold text-xs text-primary truncate max-w-[150px]">{user.full_name || user.email}</p>
+                      <span className="text-[10px] text-secondary uppercase font-semibold">{role.replace('_', ' ')}</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      signOut();
+                      setMobileMenuOpen(false);
+                    }}
+                    className="p-1.5 text-error hover:bg-error-container/30 rounded-lg text-xs flex items-center gap-1 font-bold"
+                  >
+                    <span className="material-symbols-outlined text-base">logout</span>
+                    <span>Logout</span>
+                  </button>
                 </div>
-                <select
-                  aria-label="Mobile Switch Role"
-                  value={role}
-                  onChange={(e) => {
-                    switchRole(e.target.value);
-                    setMobileMenuOpen(false);
-                  }}
-                  className="w-full bg-surface-container-lowest text-primary text-xs font-semibold p-2 rounded-lg border border-outline-variant/40 focus:outline-none"
+              ) : (
+                <Link
+                  to="/login"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="w-full flex items-center justify-center gap-2 bg-primary text-on-primary py-2.5 rounded-xl text-xs font-bold shadow-sm min-h-[42px]"
                 >
-                  <option value="citizen">Citizen</option>
-                  <option value="admin">Admin (Engineer)</option>
-                  <option value="officer">Ward Officer</option>
-                  <option value="field_worker">Field Worker (QRT)</option>
-                </select>
-              </div>
+                  <span className="material-symbols-outlined text-base">login</span>
+                  <span>Sign In / Select Portal Role</span>
+                </Link>
+              )}
 
               {/* Emergency Hotline Button */}
               <a
