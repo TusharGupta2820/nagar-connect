@@ -20,6 +20,17 @@ export const WardManagement = () => {
     loadLiveWards();
   }, []);
 
+  // Keyboard accessibility: Close modal on Escape
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && selectedWardForQR) {
+        setSelectedWardForQR(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedWardForQR]);
+
   const openQRModal = (ward) => {
     setSelectedWardForQR(ward);
     const wardNum = String(ward.ward_number || 1).padStart(2, '0');
@@ -90,21 +101,32 @@ export const WardManagement = () => {
 
       {/* Production Pole QR Placard Modal */}
       {selectedWardForQR && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-surface-container-lowest max-w-lg w-full rounded-2xl shadow-2xl border border-surface-container overflow-hidden space-y-space-md p-5 sm:p-space-lg">
-            <div className="flex items-center justify-between border-b pb-2">
+        <div
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-fade-in"
+          onClick={() => setSelectedWardForQR(null)}
+        >
+          <div
+            className="relative bg-surface-container-lowest max-w-lg w-full max-h-[92vh] overflow-y-auto rounded-2xl shadow-2xl border border-surface-container space-y-space-md p-5 sm:p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Prominent High-Visibility Floating Close Cross Button */}
+            <button
+              type="button"
+              onClick={() => setSelectedWardForQR(null)}
+              className="absolute top-3 right-3 sm:top-4 sm:right-4 w-9 h-9 rounded-full bg-surface-container hover:bg-error hover:text-white text-primary flex items-center justify-center shadow-md border border-outline-variant/40 transition-all z-20 cursor-pointer"
+              title="Close Modal (Esc)"
+              aria-label="Close modal"
+            >
+              <span className="material-symbols-outlined text-xl">close</span>
+            </button>
+
+            <div className="flex items-center justify-between border-b pb-2 pr-10">
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-secondary text-xl">qr_code_scanner</span>
                 <h3 className="font-bold text-sm sm:text-base text-primary">
                   Official MBMC Pole QR Placard Generator
                 </h3>
               </div>
-              <button
-                onClick={() => setSelectedWardForQR(null)}
-                className="p-1 rounded-lg hover:bg-surface-container text-on-surface-variant"
-              >
-                <span className="material-symbols-outlined text-base">close</span>
-              </button>
             </div>
 
             {/* Inputs for customization */}
