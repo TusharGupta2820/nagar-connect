@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { complaintService } from '../../services/complaintService';
 import { RoadMap } from '../../components/maps/RoadMap';
+import { QRCodeSVG } from 'qrcode.react';
 
 export const TrackComplaint = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -388,6 +389,26 @@ export const TrackComplaint = () => {
                         </div>
                         <span className="bg-surface-container text-on-surface-variant px-1.5 py-0.5 rounded text-[10px] font-semibold">
                           Zone-B
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Official Verification QR Module */}
+                    <div className="bg-surface-container-low p-3 rounded-xl border border-surface-container flex items-center justify-between gap-3 mt-1">
+                      <div className="space-y-0.5">
+                        <span className="text-xs font-bold text-primary block">Official Tracking QR Stamp</span>
+                        <span className="text-[11px] text-on-surface-variant block">
+                          Scan on mobile for live municipal audit & field verification.
+                        </span>
+                      </div>
+                      <div className="p-1.5 bg-white rounded-lg shadow-2xs border border-surface-container shrink-0 flex flex-col items-center">
+                        <QRCodeSVG
+                          value={`${window.location.origin}/track?id=${complaint.complaint_number || complaint.id}`}
+                          size={68}
+                          level="M"
+                        />
+                        <span className="font-mono text-[8px] text-secondary mt-0.5 font-bold">
+                          MBMC VERIFIED
                         </span>
                       </div>
                     </div>

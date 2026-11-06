@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { complaintService, WARDS_LIST } from '../../services/complaintService';
 import { dashboardService } from '../../services/dashboardService';
+import { exportComplaintsToCSV } from '../../utils/csvExport';
 import { Link } from 'react-router-dom';
 
 export const ComplaintManagement = () => {
@@ -58,13 +59,25 @@ export const ComplaintManagement = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-auto">
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
           <button
-            onClick={() => dashboardService.exportToCSV(complaints)}
-            className="px-3 py-2 bg-surface-container hover:bg-surface-container-high rounded-lg text-xs font-semibold text-primary flex items-center gap-1 border border-outline-variant/30 min-h-[40px]"
+            onClick={async () => {
+              try {
+                const allReports = await complaintService.getAllComplaintsForExport({
+                  ward: selectedWard,
+                  status: selectedStatus,
+                  severity: selectedSeverity,
+                });
+                exportComplaintsToCSV(allReports, `MBMC_Citizen_Reports_Export_${new Date().toISOString().split('T')[0]}.csv`);
+              } catch (err) {
+                alert(`Export failed: ${err.message}`);
+              }
+            }}
+            className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm min-h-[40px] cursor-pointer"
+            title="Download complete spreadsheet of citizen reports"
           >
             <span className="material-symbols-outlined text-sm">download</span>
-            <span>Export CSV</span>
+            <span>Export Citizen CSV</span>
           </button>
           <Link
             to="/report"

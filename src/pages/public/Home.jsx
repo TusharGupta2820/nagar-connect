@@ -5,7 +5,18 @@ import { QRCodeSVG } from 'qrcode.react';
 export const Home = () => {
   const navigate = useNavigate();
   const [quickTrackId, setQuickTrackId] = useState('');
-  const [selectedWardForQR] = useState('w4-uuid');
+
+  const MBMC_POLES = [
+    { wardNum: 1, poleId: 'POLE-MBMC-01-042', wardName: 'Ward 01 - Bhayandar (W)', lat: 19.3015, lng: 72.8521, locality: 'Station Road, Bhayandar West', street: 'Station Road' },
+    { wardNum: 2, poleId: 'POLE-MBMC-02-108', wardName: 'Ward 02 - Bhayandar (E)', lat: 19.2988, lng: 72.8582, locality: 'Navghar Corridor, Golden Nest', street: 'Navghar Road' },
+    { wardNum: 3, poleId: 'POLE-MBMC-03-074', wardName: 'Ward 03 - Shanti Nagar', lat: 19.2882, lng: 72.8599, locality: 'Sector 4, Shanti Nagar', street: 'Main Market Road' },
+    { wardNum: 4, poleId: 'POLE-MBMC-04-188', wardName: 'Ward 04 - Beverly Park', lat: 19.2812, lng: 72.8561, locality: 'Beverly Park, Mira Road East', street: 'Kanakia Road' },
+    { wardNum: 5, poleId: 'POLE-MBMC-05-019', wardName: 'Ward 05 - Kashimira NH-48', lat: 19.2710, lng: 72.8640, locality: 'Kashimira Highway Junction', street: 'Western Express Highway' },
+    { wardNum: 6, poleId: 'POLE-MBMC-06-033', wardName: 'Ward 06 - Ghodbunder', lat: 19.2625, lng: 72.8710, locality: 'Ghodbunder Link Road', street: 'Fountain Junction' },
+  ];
+
+  const [selectedPoleIndex, setSelectedPoleIndex] = useState(3); // Default Ward 4
+  const activePole = MBMC_POLES[selectedPoleIndex];
 
   const handleQuickTrack = (e) => {
     e.preventDefault();
@@ -14,7 +25,7 @@ export const Home = () => {
     }
   };
 
-  const qrReportingUrl = `${window.location.origin}/report?ward=${selectedWardForQR}&source=POLE-MBMC-04-188`;
+  const qrReportingUrl = `${window.location.origin}/report?ward=${activePole.wardNum}&pole=${activePole.poleId}&lat=${activePole.lat}&lng=${activePole.lng}&locality=${encodeURIComponent(activePole.locality)}&street=${encodeURIComponent(activePole.street)}`;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-margin py-space-sm sm:py-space-md">
@@ -96,65 +107,71 @@ export const Home = () => {
 
                 {/* Stylized QR Module Display */}
                 <div className="bg-surface-container-low rounded-xl p-3 sm:p-space-md flex flex-col sm:flex-row items-center gap-space-md">
-                  {/* Real QR Code SVG */}
-                  <div className="bg-surface-container-lowest p-2 rounded-lg shadow-sm shrink-0 flex flex-col items-center">
+                  {/* Real Dynamic QR Code SVG */}
+                  <div className="bg-surface-container-lowest p-2.5 rounded-lg shadow-sm shrink-0 flex flex-col items-center border border-surface-container">
                     <QRCodeSVG
                       value={qrReportingUrl}
-                      size={110}
+                      size={116}
                       level="M"
                       includeMargin={false}
                     />
-                    <span className="font-code-sm text-[10px] text-on-surface-variant mt-1 font-bold">
-                      POLE-MBMC-04-188
+                    <span className="font-mono text-[10px] text-secondary mt-1.5 font-bold tracking-wider">
+                      {activePole.poleId}
                     </span>
                   </div>
 
-                  <div className="space-y-1 text-center sm:text-left">
-                    <span className="inline-block bg-secondary-fixed text-on-secondary-fixed font-label-sm text-[10px] px-1.5 py-0.2 rounded font-semibold">
-                      INSTANT WARD AUTO-TAG
-                    </span>
-                    <p className="font-title-md text-sm sm:text-title-md font-bold text-primary">
-                      No App Installation Required
+                  <div className="space-y-1 text-center sm:text-left flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1">
+                      <span className="inline-block bg-secondary-fixed text-on-secondary-fixed font-label-sm text-[10px] px-1.5 py-0.2 rounded font-semibold">
+                        LIVE MUNICIPAL GIS POLE
+                      </span>
+                      <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded">
+                        Ward {activePole.wardNum}
+                      </span>
+                    </div>
+                    <p className="font-title-md text-sm sm:text-title-md font-bold text-primary truncate">
+                      {activePole.locality}
                     </p>
                     <p className="text-xs text-on-surface-variant leading-relaxed">
-                      Scan from any public utility pole or bus shelter in Mira Road & Bhayandar. Auto-fetches Ward ID and street coordinates.
+                      Scan directly from your mobile camera to auto-fetch GPS coordinates and Ward dispatch queue.
                     </p>
-                    <div className="pt-1">
+                    <div className="pt-1.5 flex flex-wrap items-center justify-center sm:justify-start gap-2">
                       <Link
-                        to={`/report?ward=${selectedWardForQR}&source=POLE-MBMC-04-188`}
-                        className="text-secondary font-bold text-xs hover:underline inline-flex items-center gap-1"
+                        to={`/report?ward=${activePole.wardNum}&pole=${activePole.poleId}&lat=${activePole.lat}&lng=${activePole.lng}&locality=${encodeURIComponent(activePole.locality)}&street=${encodeURIComponent(activePole.street)}`}
+                        className="text-secondary font-bold text-xs hover:underline inline-flex items-center gap-1 bg-surface-container-lowest px-2.5 py-1 rounded-md border border-secondary/20 shadow-xs"
                       >
-                        <span>Simulate Pole QR Scan</span>
+                        <span className="material-symbols-outlined text-xs">qr_code_scanner</span>
+                        <span>Test Scan This Pole</span>
                         <span className="material-symbols-outlined text-xs">arrow_forward</span>
                       </Link>
                     </div>
                   </div>
                 </div>
 
-                {/* Live Ward Coverage Pills */}
-                <div className="space-y-1 pt-1">
-                  <span className="text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold block">
-                    Active Municipal Coverage:
-                  </span>
-                  <div className="flex flex-wrap gap-1">
-                    <span className="bg-surface-container text-on-surface px-1.5 py-0.5 rounded text-[11px]">
-                      Ward 1: Mira Gaon / Bhayandar (W)
+                {/* Interactive Ward Coverage Selector Pills */}
+                <div className="space-y-1.5 pt-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold block">
+                      Select Ward Pole to Preview QR:
                     </span>
-                    <span className="bg-surface-container text-on-surface px-1.5 py-0.5 rounded text-[11px]">
-                      Ward 2: Shanti Nagar / Bhayandar (E)
-                    </span>
-                    <span className="bg-surface-container text-on-surface px-1.5 py-0.5 rounded text-[11px]">
-                      Ward 3: Kanakia Park
-                    </span>
-                    <span className="bg-surface-container text-on-surface px-1.5 py-0.5 rounded text-[11px] font-bold text-secondary">
-                      Ward 4: Beverly Park
-                    </span>
-                    <span className="bg-surface-container text-on-surface px-1.5 py-0.5 rounded text-[11px]">
-                      Ward 5: Kashimira Highway
-                    </span>
-                    <span className="bg-surface-container text-on-surface px-1.5 py-0.5 rounded text-[11px]">
-                      Ward 6: Ghodbunder / Uttan
-                    </span>
+                    <span className="text-[10px] text-secondary font-bold">Wards 1 – 6</span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                    {MBMC_POLES.map((pole, idx) => (
+                      <button
+                        key={pole.poleId}
+                        type="button"
+                        onClick={() => setSelectedPoleIndex(idx)}
+                        className={`px-2 py-1.5 rounded-lg text-left text-[11px] font-medium transition-all border ${
+                          selectedPoleIndex === idx
+                            ? 'bg-secondary text-on-secondary font-bold border-secondary shadow-xs scale-[1.02]'
+                            : 'bg-surface-container hover:bg-surface-container-high text-on-surface border-transparent'
+                        }`}
+                      >
+                        <span className="block truncate">{pole.wardName}</span>
+                        <span className="block text-[9px] opacity-80 font-mono">{pole.poleId}</span>
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>

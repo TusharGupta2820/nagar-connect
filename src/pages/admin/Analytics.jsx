@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { complaintService } from '../../services/complaintService';
+import { exportComplaintsToCSV } from '../../utils/csvExport';
 import {
   ResponsiveContainer,
   BarChart,
@@ -63,16 +65,34 @@ export const Analytics = () => {
           </p>
         </div>
 
-        <select
-          value={timeRange}
-          onChange={(e) => setTimeRange(e.target.value)}
-          className="px-3 py-2 rounded-lg bg-surface-container-low text-xs border border-outline-variant/40 font-semibold self-start sm:self-auto min-h-[40px]"
-        >
-          <option value="7d">Last 7 Days</option>
-          <option value="30d">Last 30 Days (Cycle: Nov-Dec)</option>
-          <option value="90d">Current Fiscal Q3</option>
-          <option value="1y">Full Year 2026</option>
-        </select>
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          <select
+            value={timeRange}
+            onChange={(e) => setTimeRange(e.target.value)}
+            className="px-3 py-2 rounded-lg bg-surface-container-low text-xs border border-outline-variant/40 font-semibold min-h-[40px]"
+          >
+            <option value="7d">Last 7 Days</option>
+            <option value="30d">Last 30 Days (Cycle: Nov-Dec)</option>
+            <option value="90d">Current Fiscal Q3</option>
+            <option value="1y">Full Year 2026</option>
+          </select>
+
+          <button
+            onClick={async () => {
+              try {
+                const allData = await complaintService.getAllComplaintsForExport();
+                exportComplaintsToCSV(allData, `MBMC_Audit_Citizen_Reports_${timeRange}_${new Date().toISOString().split('T')[0]}.csv`);
+              } catch (err) {
+                alert(`Export failed: ${err.message}`);
+              }
+            }}
+            className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-sm min-h-[40px] cursor-pointer"
+            title="Download complete audit dataset in CSV format"
+          >
+            <span className="material-symbols-outlined text-sm">download</span>
+            <span>Export Audit CSV</span>
+          </button>
+        </div>
       </div>
 
       {/* KPI Cards */}

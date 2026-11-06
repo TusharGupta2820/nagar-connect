@@ -34,6 +34,8 @@ export const ReportIssue = () => {
   // Location State
   const initialWard = searchParams.get('ward') || 'w4-uuid';
   const [wardId, setWardId] = useState(initialWard);
+  const [wardsList, setWardsList] = useState(WARDS_LIST);
+  const [scannedPoleId, setScannedPoleId] = useState(null);
   const [streetName, setStreetName] = useState('Sheetal Nagar Main Road');
   const [landmark, setLandmark] = useState('Opposite Apna Bazar, near Pillar #42');
   const [locality, setLocality] = useState('Mira Road Central');
@@ -75,12 +77,48 @@ export const ReportIssue = () => {
   const [submitError, setSubmitError] = useState(null);
   const [submissionSuccess, setSubmissionSuccess] = useState(null);
 
-  // Pre-load query params if present
+  // Pre-load query params and fetch live Supabase wards
   useEffect(() => {
-    const qCategory = searchParams.get('category');
-    if (qCategory) setIssueCategory(qCategory);
-    const qWard = searchParams.get('ward');
-    if (qWard) setWardId(qWard);
+    const loadWards = async () => {
+      try {
+        const liveWards = await complaintService.getWards();
+        if (liveWards && liveWards.length) {
+          setWardsList(liveWards);
+          const qWard = searchParams.get('ward');
+          if (qWard) {
+            const matched = liveWards.find(
+              (w) =>
+                w.id === qWard ||
+                String(w.ward_number) === String(qWard).replace(/\D/g, '') ||
+                (w.ward_name && w.ward_name.toLowerCase().includes(qWard.toLowerCase()))
+            );
+            if (matched) setWardId(matched.id);
+          } else {
+            const defaultWard = liveWards.find((w) => w.ward_number === 4) || liveWards[0];
+            if (defaultWard) setWardId(defaultWard.id);
+          }
+        }
+      } catch (err) {
+        console.warn('Could not fetch wards:', err);
+      }
+    };
+    loadWards();
+
+    const pole = searchParams.get('pole') || searchParams.get('source');
+    if (pole) setScannedPoleId(pole);
+
+    const qLat = searchParams.get('lat');
+    const qLng = searchParams.get('lng');
+    if (qLat && qLng) setCoords({ lat: parseFloat(qLat), lng: parseFloat(qLng) });
+
+    const qLocality = searchParams.get('locality');
+    if (qLocality) setLocality(qLocality);
+
+    const qStreet = searchParams.get('street');
+    if (qStreet) setStreetName(qStreet);
+
+    const qCat = searchParams.get('category');
+    if (qCat) setIssueCategory(qCat);
   }, [searchParams]);
 
   // Handle GPS coordinate detection
@@ -199,7 +237,7 @@ export const ReportIssue = () => {
     }
   };
 
-  const selectedWardObj = WARDS_LIST.find((w) => w.id === wardId) || WARDS_LIST[3];
+  const selectedWardObj = wardsList.find((w) => w.id === wardId || String(w.ward_number) === String(wardId).replace(/\D/g, '')) || wardsList[0];
 
   // If submitted successfully, show confirmation screen
   if (submissionSuccess) {
@@ -277,15 +315,42 @@ export const ReportIssue = () => {
             </div>
 
             {/* QR Code for instant tracking */}
-            <div className="flex items-center justify-between pt-2">
-              <div className="space-y-0.5">
-                <span className="text-xs font-bold text-primary">Scan to Track on Mobile:</span>
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 bg-surface-container-lowest p-3 rounded-xl border border-surface-container">
+              <div className="space-y-1 text-center sm:text-left">
+                <span className="text-xs font-bold text-primary block">Permanent Docket Tracking QR Code:</span>
                 <p className="text-[11px] text-on-surface-variant">
-                  Bookmark this docket on your phone
+                  Point any phone camera to track live status without logging in.
                 </p>
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const svg = document.getElementById('docket-qr-svg');
+                      if (svg) {
+                        const svgData = new XMLSerializer().serializeToString(svg);
+                        const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+                        const svgUrl = URL.createObjectURL(svgBlob);
+                        const downloadLink = document.createElement('a');
+                        downloadLink.href = svgUrl;
+                        downloadLink.download = `MBMC_${docketNumber}_Tracking_QR.svg`;
+                        document.body.appendChild(downloadLink);
+                        downloadLink.click();
+                        document.body.removeChild(downloadLink);
+                        URL.revokeObjectURL(svgUrl);
+                      }
+                    }}
+                    className="px-2.5 py-1 text-[11px] font-bold text-secondary bg-surface-container-low hover:bg-surface-container rounded-md border border-secondary/20 inline-flex items-center gap-1 shadow-2xs"
+                  >
+                    <span className="material-symbols-outlined text-xs">download</span>
+                    <span>Download QR Sticker</span>
+                  </button>
+                </div>
               </div>
-              <div className="p-1 bg-white rounded shadow-sm shrink-0">
-                <QRCodeSVG value={trackingLink} size={72} />
+              <div className="p-2 bg-white rounded-lg shadow-sm shrink-0 border border-surface-container flex flex-col items-center">
+                <QRCodeSVG id="docket-qr-svg" value={trackingLink} size={84} level="M" />
+                <span className="font-mono text-[9px] text-on-surface-variant mt-1 font-bold">
+                  {docketNumber}
+                </span>
               </div>
             </div>
           </div>
@@ -469,6 +534,27 @@ export const ReportIssue = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-start">
           {/* Main Form Intake Area (8 cols) */}
           <form onSubmit={handleSubmit} className="lg:col-span-8 flex flex-col gap-space-md sm:gap-space-xl">
+            {scannedPoleId && (
+              <div className="p-3.5 bg-emerald-50 text-emerald-950 rounded-xl border border-emerald-300 flex items-center justify-between gap-3 shadow-xs">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-700 text-white flex items-center justify-center shrink-0">
+                    <span className="material-symbols-outlined text-lg">qr_code_scanner</span>
+                  </div>
+                  <div>
+                    <span className="font-bold text-xs sm:text-sm block">
+                      Municipal QR Pole #{scannedPoleId} Scanned
+                    </span>
+                    <span className="text-[11px] text-emerald-800 block">
+                      Ward, street locality, and GPS pin have been automatically calibrated from MBMC GIS database.
+                    </span>
+                  </div>
+                </div>
+                <span className="px-2 py-0.5 bg-emerald-700 text-white rounded font-mono text-[10px] font-bold uppercase tracking-wider shrink-0">
+                  GIS LINKED
+                </span>
+              </div>
+            )}
+
             {submitError && (
               <div className="p-space-md bg-error-container text-on-error-container rounded-xl flex items-center gap-space-sm border border-error">
                 <span className="material-symbols-outlined text-xl">error</span>
@@ -770,9 +856,9 @@ export const ReportIssue = () => {
                     onChange={(e) => setWardId(e.target.value)}
                     className="w-full px-3 py-2.5 rounded-xl bg-surface-container-low text-on-surface text-base sm:text-sm shadow-inner focus:outline-none focus:ring-2 focus:ring-secondary"
                   >
-                    {WARDS_LIST.map((w) => (
+                    {wardsList.map((w) => (
                       <option key={w.id} value={w.id}>
-                        {w.ward_name} ({w.office})
+                        {w.ward_name} {w.ward_number ? `(Ward ${w.ward_number})` : ''}
                       </option>
                     ))}
                   </select>

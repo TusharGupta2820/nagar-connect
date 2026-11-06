@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { complaintService, WARDS_LIST, DEPARTMENTS_LIST } from '../../services/complaintService';
 import { dashboardService } from '../../services/dashboardService';
+import { exportComplaintsToCSV } from '../../utils/csvExport';
 import { Link } from 'react-router-dom';
 
 export const AdminDashboard = () => {
@@ -161,6 +162,24 @@ export const AdminDashboard = () => {
                 ))}
               </select>
             </div>
+
+            <button
+              onClick={async () => {
+                try {
+                  const allData = await complaintService.getAllComplaintsForExport({
+                    ward: selectedWard,
+                  });
+                  exportComplaintsToCSV(allData, `MBMC_Citizen_Reports_${new Date().toISOString().split('T')[0]}.csv`);
+                } catch (err) {
+                  alert(`Export error: ${err.message}`);
+                }
+              }}
+              className="flex items-center justify-center gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold px-3 py-2 rounded-lg shadow-sm transition-colors cursor-pointer min-h-[40px]"
+              title="Download full citizen grievance dataset in CSV format"
+            >
+              <span className="material-symbols-outlined text-base">download</span>
+              <span>CITIZEN CSV</span>
+            </button>
 
             <button
               onClick={loadData}

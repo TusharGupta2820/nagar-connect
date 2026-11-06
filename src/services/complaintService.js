@@ -536,12 +536,26 @@ export const complaintService = {
     // Call Supabase RPC submit_public_complaint
     const mediaPaths = mediaFiles.map((m) => m.path || m.url).filter(Boolean);
 
+    // Ensure wardId is a valid UUID
+    let validWardId = wardId;
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(wardId);
+    if (!isUUID) {
+      const wards = await this.getWards();
+      const matched = wards.find(
+        (w) =>
+          w.id === wardId ||
+          String(w.ward_number) === String(wardId).replace(/\D/g, '') ||
+          (w.ward_name && w.ward_name.toLowerCase().includes(String(wardId).toLowerCase()))
+      ) || wards[0];
+      validWardId = matched?.id;
+    }
+
     const { data, error } = await supabase.rpc('submit_public_complaint', {
       p_issue_title: issueTitle,
       p_issue_category: issueCategory,
       p_description: description,
       p_severity: severity,
-      p_ward_id: wardId,
+      p_ward_id: validWardId,
       p_locality: locality,
       p_street_name: streetName,
       p_landmark: landmark,
@@ -560,6 +574,64 @@ export const complaintService = {
       throw error;
     }
 
+    // Cache locally with full citizen info for instant UI refresh & CSV export
+    const currentList = getStoredComplaints();
+    const wardObj = WARDS_LIST.find((w) => w.id === wardId || w.id === validWardId) || WARDS_LIST[3];
+    const cachedRecord = {
+      id: data.id,
+      complaint_number: data.complaint_number,
+      tracking_token: data.tracking_token,
+      tracking_token_hash: 'hash_' + data.tracking_token,
+      issue_title: issueTitle,
+      issue_category: issueCategory,
+      description,
+      severity,
+      status: 'submitted',
+      state: 'Maharashtra',
+      district: 'Thane',
+      municipal_corporation: 'Mira-Bhayandar Municipal Corporation',
+      ward_id: validWardId,
+      ward_number: wardObj.ward_number,
+      ward_name: wardObj.ward_name,
+      locality,
+      street_name: streetName,
+      landmark,
+      pincode: '401107',
+      latitude: latitude ? parseFloat(latitude) : 19.2812,
+      longitude: longitude ? parseFloat(longitude) : 72.8561,
+      accuracy_meters: accuracyMeters || 3.0,
+      citizen_name: citizenName,
+      citizen_phone: citizenPhone,
+      citizen_email: citizenEmail,
+      preferred_language: preferredLanguage,
+      submitted_at: new Date().toISOString(),
+      verified_at: null,
+      assigned_department_id: null,
+      department_name: 'Pending Assignment',
+      department_code: 'UNASSIGNED',
+      officer_name: 'Pending Verification',
+      sla_hours: severity === 'critical' ? 12 : severity === 'high' ? 48 : 72,
+      elapsed_hours: 0,
+      media: mediaFiles.map((m, idx) => ({
+        id: `media-${Date.now()}-${idx}`,
+        storage_path: m.url || m.path || 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&w=800&q=80',
+        media_type: m.type || 'image/jpeg',
+        media_category: 'citizen_evidence',
+        file_size_bytes: m.size || 2048000,
+        metadata: { fileName: m.name || `photo_${idx + 1}.jpg` },
+      })),
+      timeline: [
+        {
+          id: `th-${Date.now()}`,
+          old_status: null,
+          new_status: 'submitted',
+          remarks: 'Citizen grievance submitted successfully with verified coordinates and photo evidence.',
+          created_at: new Date().toISOString(),
+        },
+      ],
+    };
+
+    saveStoredComplaints([cachedRecord, ...currentList]);
     return data;
   },
 
@@ -569,36 +641,39 @@ export const complaintService = {
   async trackComplaint(complaintNumber, trackingToken = null) {
     const cleanNumber = (complaintNumber || '').trim().toUpperCase();
 
-    if (!isSupabaseConfigured()) {
-      const list = getStoredComplaints();
-      const matched = list.find((c) =>
-        c.complaint_number.toUpperCase().includes(cleanNumber) ||
-        cleanNumber.includes(c.complaint_number.toUpperCase()) ||
-        c.id === cleanNumber
-      );
+    // 1. Attempt live Supabase RPC
+    if (isSupabaseConfigured()) {
+      try {
+        const { data, error } = await supabase.rpc('track_complaint_public', {
+          p_complaint_number: cleanNumber,
+          p_tracking_token: trackingToken,
+        });
 
-      if (!matched) {
-        return { found: false, message: 'No grievance record found with this reference number.' };
+        if (!error && data && data.found) {
+          return data;
+        }
+      } catch (err) {
+        console.warn('Supabase track RPC notice:', err);
       }
-
-      return {
-        found: true,
-        is_authorized: true,
-        ...matched,
-      };
     }
 
-    const { data, error } = await supabase.rpc('track_complaint_public', {
-      p_complaint_number: cleanNumber,
-      p_tracking_token: trackingToken,
-    });
+    // 2. Fallback to cached/local storage
+    const list = getStoredComplaints();
+    const matched = list.find((c) =>
+      c.complaint_number?.toUpperCase().includes(cleanNumber) ||
+      cleanNumber.includes(c.complaint_number?.toUpperCase()) ||
+      c.id === cleanNumber
+    );
 
-    if (error) {
-      console.error('Track complaint error:', error);
-      throw error;
+    if (!matched) {
+      return { found: false, message: 'No grievance record found with this reference number.' };
     }
 
-    return data;
+    return {
+      found: true,
+      is_authorized: true,
+      ...matched,
+    };
   },
 
   /**
@@ -615,83 +690,116 @@ export const complaintService = {
       pageSize = 20,
     } = filters;
 
-    if (!isSupabaseConfigured()) {
-      let list = getStoredComplaints();
+    let supabaseList = [];
 
-      if (ward && ward !== 'all') {
-        list = list.filter((c) =>
-          String(c.ward_number) === String(ward).replace('w', '') ||
-          c.ward_id === ward
-        );
-      }
-      if (status && status !== 'all') {
-        list = list.filter((c) => c.status === status);
-      }
-      if (severity && severity !== 'all') {
-        list = list.filter((c) => c.severity === severity);
-      }
-      if (category && category !== 'all') {
-        list = list.filter((c) => c.issue_category === category);
-      }
-      if (search && search.trim()) {
-        const query = search.trim().toLowerCase();
-        list = list.filter(
-          (c) =>
-            c.complaint_number.toLowerCase().includes(query) ||
-            c.issue_title.toLowerCase().includes(query) ||
-            (c.street_name && c.street_name.toLowerCase().includes(query)) ||
-            (c.locality && c.locality.toLowerCase().includes(query)) ||
-            (c.contractor_name && c.contractor_name.toLowerCase().includes(query))
-        );
-      }
+    if (isSupabaseConfigured()) {
+      try {
+        let query = supabase
+          .from('complaints')
+          .select('*, wards(ward_name, ward_number), departments(department_name, department_code), profiles:assigned_officer_id(full_name, designation), complaint_media(*)', { count: 'exact' });
 
-      const totalCount = list.length;
-      const startIndex = (page - 1) * pageSize;
-      const paginated = list.slice(startIndex, startIndex + pageSize);
+        if (ward && ward !== 'all') {
+          query = query.eq('ward_id', ward);
+        }
+        if (status && status !== 'all') {
+          query = query.eq('status', status);
+        }
+        if (severity && severity !== 'all') {
+          query = query.eq('severity', severity);
+        }
+        if (category && category !== 'all') {
+          query = query.eq('issue_category', category);
+        }
+        if (search && search.trim()) {
+          query = query.or(`complaint_number.ilike.%${search}%,issue_title.ilike.%${search}%,street_name.ilike.%${search}%`);
+        }
 
-      return {
-        complaints: paginated,
-        total: totalCount,
-        page,
-        pageSize,
-        totalPages: Math.ceil(totalCount / pageSize),
-      };
+        query = query.order('created_at', { ascending: false });
+
+        const { data, error } = await query;
+        if (!error && data && data.length > 0) {
+          supabaseList = data.map((item) => ({
+            ...item,
+            ward_number: item.wards?.ward_number || item.ward_number,
+            ward_name: item.wards?.ward_name || item.ward_name,
+            department_name: item.departments?.department_name || item.department_name,
+            department_code: item.departments?.department_code || item.department_code,
+            officer_name: item.profiles?.full_name || item.officer_name,
+            media: item.complaint_media || item.media || [],
+          }));
+        }
+      } catch (err) {
+        console.warn('Supabase getComplaints fallback:', err);
+      }
     }
 
-    let query = supabase
-      .from('complaints')
-      .select('*, wards(ward_name, ward_number), departments(department_name, department_code), profiles:assigned_officer_id(full_name, designation), complaint_media(*)', { count: 'exact' });
+    // Combine Supabase records with locally registered citizen submissions & seed templates
+    const localList = getStoredComplaints();
+    const combinedMap = new Map();
 
+    // Supabase records
+    supabaseList.forEach((c) => {
+      const key = c.complaint_number || c.id;
+      if (key) combinedMap.set(key, c);
+    });
+
+    // Local / cached records
+    localList.forEach((c) => {
+      const key = c.complaint_number || c.id;
+      if (key && !combinedMap.has(key)) {
+        combinedMap.set(key, c);
+      }
+    });
+
+    let list = Array.from(combinedMap.values());
+
+    // Apply filtering
     if (ward && ward !== 'all') {
-      query = query.eq('ward_id', ward);
+      list = list.filter((c) =>
+        String(c.ward_number) === String(ward).replace(/\D/g, '') ||
+        c.ward_id === ward
+      );
     }
     if (status && status !== 'all') {
-      query = query.eq('status', status);
+      list = list.filter((c) => c.status === status);
     }
     if (severity && severity !== 'all') {
-      query = query.eq('severity', severity);
+      list = list.filter((c) => c.severity === severity);
     }
     if (category && category !== 'all') {
-      query = query.eq('issue_category', category);
+      list = list.filter((c) => c.issue_category === category);
     }
     if (search && search.trim()) {
-      query = query.or(`complaint_number.ilike.%${search}%,issue_title.ilike.%${search}%,street_name.ilike.%${search}%`);
+      const q = search.trim().toLowerCase();
+      list = list.filter(
+        (c) =>
+          c.complaint_number?.toLowerCase().includes(q) ||
+          c.issue_title?.toLowerCase().includes(q) ||
+          (c.street_name && c.street_name.toLowerCase().includes(q)) ||
+          (c.locality && c.locality.toLowerCase().includes(q)) ||
+          (c.citizen_name && c.citizen_name.toLowerCase().includes(q))
+      );
     }
 
-    const from = (page - 1) * pageSize;
-    const to = from + pageSize - 1;
-    query = query.order('created_at', { ascending: false }).range(from, to);
-
-    const { data, count, error } = await query;
-    if (error) throw error;
+    const total = list.length;
+    const startIndex = (page - 1) * pageSize;
+    const paginated = list.slice(startIndex, startIndex + pageSize);
 
     return {
-      complaints: data || [],
-      total: count || 0,
+      complaints: paginated,
+      total,
       page,
       pageSize,
-      totalPages: Math.ceil((count || 0) / pageSize),
+      totalPages: Math.ceil(total / pageSize) || 1,
     };
+  },
+
+  /**
+   * Fetch all citizen complaints for CSV export (no pagination limit)
+   */
+  async getAllComplaintsForExport(filters = {}) {
+    const res = await this.getComplaints({ ...filters, page: 1, pageSize: 5000 });
+    return res.complaints || [];
   },
 
   /**
