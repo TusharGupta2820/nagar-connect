@@ -1,4 +1,4 @@
-package in.gov.mbmc.nagarconnect;
+package com.mbmc.nagarconnect;
 
 import com.getcapacitor.BridgeActivity;
 

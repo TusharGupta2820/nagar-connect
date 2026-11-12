@@ -1,5 +1,5 @@
 {
-  "appId": "in.gov.mbmc.nagarconnect",
+  "appId": "com.mbmc.nagarconnect",
   "appName": "Nagar Connect",
   "webDir": "dist",
   "server": {
